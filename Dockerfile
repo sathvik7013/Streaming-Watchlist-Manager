@@ -12,6 +12,7 @@ WORKDIR /app
 COPY pom.xml ./
 RUN mvn dependency:go-offline -B
 COPY src/ ./src/
+RUN rm -rf ./src/main/resources/static/*
 COPY --from=frontend-build /app/frontend/dist/ ./src/main/resources/static/
 RUN mvn clean package -DskipTests
 

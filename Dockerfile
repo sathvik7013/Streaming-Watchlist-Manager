@@ -1,22 +1,12 @@
-# Stage 1: Build frontend
-FROM node:18-alpine AS frontend-build
-WORKDIR /app/frontend
-COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install
-COPY frontend/ ./
-RUN npm run build
-
-# Stage 2: Build backend
+# Stage 1: Build backend
 FROM maven:3.9-eclipse-temurin-17 AS backend-build
 WORKDIR /app
 COPY pom.xml ./
 RUN mvn dependency:go-offline -B
 COPY src/ ./src/
-RUN rm -rf ./src/main/resources/static/*
-COPY --from=frontend-build /app/frontend/dist/ ./src/main/resources/static/
 RUN mvn clean package -DskipTests
 
-# Stage 3: Run
+# Stage 2: Run
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
 COPY --from=backend-build /app/target/*.jar app.jar

@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Watchlist Manager</title>
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="navbar-brand">&#127916; WatchList</div>
+    <ul class="navbar-nav" id="navLinks">
+        <li><a href="#" onclick="showSection('browse')" class="active" data-section="browse">Browse</a></li>
+        <li><a href="#" onclick="showSection('watchlist')" data-section="watchlist">My Watchlist</a></li>
+    </ul>
+    <div class="navbar-auth" id="authButtons">
+        <button class="btn btn-outline btn-sm" onclick="showSection('login')">Login</button>
+        <button class="btn btn-primary btn-sm" onclick="showSection('register')">Register</button>
+    </div>
+    <div class="navbar-auth" id="userSection" style="display:none;">
+        <span class="user-info">Hello, <strong id="usernameDisplay"></strong></span>
+        <button class="btn btn-outline btn-sm" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="main-content">
+
+    <!-- LOGIN -->
+    <div id="loginSection" class="section">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h2>Welcome Back</h2>
+                <p class="subtitle">Sign in to manage your watchlist</p>
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" class="form-control" id="loginUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" class="form-control" id="loginPassword" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Sign In</button>
+                </form>
+                <p class="auth-toggle">Don't have an account? <a href="#" onclick="showSection('register')">Register</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- REGISTER -->
+    <div id="registerSection" class="section">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h2>Create Account</h2>
+                <p class="subtitle">Start tracking your favorite shows</p>
+                <form onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" class="form-control" id="regUsername" minlength="3" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" class="form-control" id="regEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" class="form-control" id="regPassword" minlength="6" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Create Account</button>
+                </form>
+                <p class="auth-toggle">Already have an account? <a href="#" onclick="showSection('login')">Login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- BROWSE CONTENT -->
+    <div id="browseSection" class="section active">
+        <h1 class="page-title">&#127902; Browse Content</h1>
+
+        <div class="search-section">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search movies and series..." oninput="debounceSearch()">
+            </div>
+            <div class="filter-group">
+                <select class="filter-select" id="typeFilter" onchange="applyFilters()">
+                    <option value="">All Types</option>
+                    <option value="MOVIE">Movies</option>
+                    <option value="SERIES">Series</option>
+                </select>
+                <select class="filter-select" id="genreFilter" onchange="applyFilters()">
+                    <option value="">All Genres</option>
+                </select>
+                <select class="filter-select" id="platformFilter" onchange="applyFilters()">
+                    <option value="">All Platforms</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="contentGrid" class="content-grid"></div>
+        <div id="contentLoading" class="loading-overlay" style="display:none"><div class="spinner"></div></div>
+        <div id="contentEmpty" class="empty-state" style="display:none">
+            <div class="empty-icon">&#128269;</div>
+            <h3>No content found</h3>
+            <p>Try adjusting your search or filters</p>
+        </div>
+    </div>
+
+    <!-- MY WATCHLIST -->
+    <div id="watchlistSection" class="section">
+        <h1 class="page-title">&#128203; My Watchlist</h1>
+
+        <div id="statsGrid" class="stats-grid"></div>
+
+        <div class="watchlist-header">
+            <div class="watchlist-filters">
+                <button class="filter-btn active" onclick="filterWatchlist('ALL')">All</button>
+                <button class="filter-btn" onclick="filterWatchlist('PLAN_TO_WATCH')">Plan to Watch</button>
+                <button class="filter-btn" onclick="filterWatchlist('WATCHING')">Watching</button>
+                <button class="filter-btn" onclick="filterWatchlist('COMPLETED')">Completed</button>
+                <button class="filter-btn" onclick="filterWatchlist('DROPPED')">Dropped</button>
+            </div>
+        </div>
+
+        <div id="watchlistGrid" class="watchlist-grid"></div>
+        <div id="watchlistLoading" class="loading-overlay" style="display:none"><div class="spinner"></div></div>
+        <div id="watchlistEmpty" class="empty-state" style="display:none">
+            <div class="empty-icon">&#128250;</div>
+            <h3>Your watchlist is empty</h3>
+            <p>Browse content and add items to get started</p>
+            <button class="btn btn-primary" onclick="showSection('browse')">Browse Content</button>
+        </div>
+    </div>
+</div>
+
+<!-- ADD TO WATCHLIST MODAL -->
+<div class="modal-overlay" id="addModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add to Watchlist</h3>
+            <button class="modal-close" onclick="closeModal('addModal')">&times;</button>
+        </div>
+        <p id="addModalTitle" style="margin-bottom:1rem; color:var(--text-secondary)"></p>
+        <form onsubmit="handleAddToWatchlist(event)">
+            <input type="hidden" id="addContentId">
+            <div class="form-group">
+                <label>Status</label>
+                <select class="form-control" id="addStatus">
+                    <option value="PLAN_TO_WATCH">Plan to Watch</option>
+                    <option value="WATCHING">Watching</option>
+                    <option value="COMPLETED">Completed</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Your Rating (1-10, optional)</label>
+                <input type="number" class="form-control" id="addRating" min="1" max="10" placeholder="Leave blank if not rated">
+            </div>
+            <div class="form-group" id="addEpisodeGroup" style="display:none">
+                <label>Current Episode</label>
+                <input type="number" class="form-control" id="addEpisode" min="0" value="0">
+            </div>
+            <div class="form-group">
+                <label>Notes (optional)</label>
+                <textarea class="form-control" id="addNotes" placeholder="Any personal notes..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('addModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Add to Watchlist</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- EDIT WATCHLIST ITEM MODAL -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Edit Watchlist Item</h3>
+            <button class="modal-close" onclick="closeModal('editModal')">&times;</button>
+        </div>
+        <p id="editModalTitle" style="margin-bottom:1rem; color:var(--text-secondary)"></p>
+        <form onsubmit="handleEditWatchlistItem(event)">
+            <input type="hidden" id="editItemId">
+            <input type="hidden" id="editContentId2">
+            <div class="form-group">
+                <label>Status</label>
+                <select class="form-control" id="editStatus">
+                    <option value="PLAN_TO_WATCH">Plan to Watch</option>
+                    <option value="WATCHING">Watching</option>
+                    <option value="COMPLETED">Completed</option>
+                    <option value="DROPPED">Dropped</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Your Rating (1-10)</label>
+                <input type="number" class="form-control" id="editRating" min="1" max="10">
+            </div>
+            <div class="form-group" id="editEpisodeGroup">
+                <label>Current Episode</label>
+                <input type="number" class="form-control" id="editEpisode" min="0">
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea class="form-control" id="editNotes"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('editModal')">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script src="/js/app.js"></script>
+</body>
+</html>

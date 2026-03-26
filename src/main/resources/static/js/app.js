@@ -44,7 +44,7 @@ async function handleLogin(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, password: pass })
         });
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
         if (!res.ok) throw new Error(data.error || 'Login failed');
 
         token = data.token;
@@ -70,7 +70,7 @@ async function handleRegister(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: user, email: email, password: pass })
         });
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
         if (!res.ok) throw new Error(data.error || data.username || data.email || data.password || 'Registration failed');
 
         token = data.token;
@@ -121,7 +121,9 @@ async function loadContent() {
 
     try {
         const res = await fetch(`${API}/content`);
-        allContent = await res.json();
+        const data = await parseJsonSafely(res);
+        if (!res.ok) throw new Error(data.error || 'Failed to load content');
+        allContent = Array.isArray(data) ? data : [];
         populateFilters();
         applyFilters();
     } catch (err) {
@@ -213,8 +215,9 @@ async function loadWatchlist() {
     try {
         const url = currentFilter === 'ALL' ? `${API}/watchlist` : `${API}/watchlist/filter?status=${currentFilter}`;
         const res = await fetch(url, { headers: authHeaders() });
-        if (!res.ok) throw new Error('Failed to load watchlist');
-        watchlist = await res.json();
+        const data = await parseJsonSafely(res);
+        if (!res.ok) throw new Error(data.error || 'Failed to load watchlist');
+        watchlist = Array.isArray(data) ? data : [];
         renderWatchlist(watchlist);
     } catch (err) {
         showToast(err.message, 'error');
@@ -227,8 +230,8 @@ async function loadStats() {
     if (!token) return;
     try {
         const res = await fetch(`${API}/watchlist/stats`, { headers: authHeaders() });
-        if (!res.ok) return;
-        const stats = await res.json();
+        const stats = await parseJsonSafely(res);
+        if (!res.ok || !stats || typeof stats !== 'object') return;
         const total = Object.values(stats).reduce((a, b) => a + b, 0);
 
         document.getElementById('statsGrid').innerHTML = `
@@ -330,7 +333,7 @@ async function handleAddToWatchlist(e) {
             headers: authHeaders(),
             body: JSON.stringify(body)
         });
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
         if (!res.ok) throw new Error(data.error || 'Failed to add to watchlist');
 
         showToast('Added to watchlist!', 'success');
@@ -378,7 +381,7 @@ async function handleEditWatchlistItem(e) {
             headers: authHeaders(),
             body: JSON.stringify(body)
         });
-        const data = await res.json();
+        const data = await parseJsonSafely(res);
         if (!res.ok) throw new Error(data.error || 'Failed to update');
 
         showToast('Watchlist updated!', 'success');
@@ -466,4 +469,14 @@ function showToast(message, type = 'info') {
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+async function parseJsonSafely(response) {
+    const text = await response.text();
+    if (!text) return {};
+    try {
+        return JSON.parse(text);
+    } catch (err) {
+        return { error: 'Invalid response from server' };
+    }
 }

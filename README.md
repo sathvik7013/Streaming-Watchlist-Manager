@@ -88,3 +88,24 @@ npm install
 npm run dev
 ```
 React frontend runs on `http://localhost:5173`
+
+## Deployment Notes
+
+### Backend on Render
+- This project now supports Render's dynamic port via `server.port=${PORT:8080}` in `src/main/resources/application.properties`.
+- If deploying from source on Render:
+    - Build command: `./mvnw clean package -DskipTests`
+    - Start command: `java -jar target/streaming-watchlist-manager-1.0.0.jar`
+- If deploying with Docker, use the provided `Dockerfile`.
+- Set backend environment variable `APP_CORS_ALLOWED_ORIGIN_PATTERNS` (comma-separated), for example:
+    - `APP_CORS_ALLOWED_ORIGIN_PATTERNS=https://your-frontend.vercel.app,https://*.vercel.app,http://localhost:5173`
+
+### Vite Frontend
+- Build command: `npm run build`
+- Publish directory: `dist`
+- Set `VITE_API_URL` in your frontend host to your Render backend API URL, for example:
+    - `VITE_API_URL=https://your-backend.onrender.com/api`
+
+Without `VITE_API_URL`, local development keeps using the Vite proxy (`/api` -> `http://localhost:8080`).
+
+If frontend is on Vercel, `frontend/vercel.json` now preserves `/api/*` paths so they are not rewritten to `index.html`.
